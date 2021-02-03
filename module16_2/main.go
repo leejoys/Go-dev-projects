@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -25,6 +26,7 @@ type Cache interface {
 type InMemoryCache struct {
 	data     map[string]CacheEntry
 	expireIn time.Duration
+	*sync.Mutex
 }
 
 //NewInMemoryCache ...
@@ -32,27 +34,41 @@ func NewInMemoryCache(expireIn time.Duration) *InMemoryCache {
 	return &InMemoryCache{
 		make(map[string]CacheEntry, 20),
 		expireIn,
+		&sync.Mutex{},
 	}
 }
 
 //Set ...
 func (c InMemoryCache) Set(key string, value interface{}) {
 	entry := CacheEntry{time.Now(), value}
+	c.Lock()
 	c.data[key] = entry
+	c.Unlock()
 }
 
 //Get ...
 func (c InMemoryCache) Get(key string) interface{} {
-	entry := c.data[key]
+	c.Lock()
+	entry, ok := c.data[key]
+	c.Unlock()
+	if !ok {
+		fmt.Println("There is no value")
+		return nil
+	}
 	expired := time.Now()
 	if expired.Sub(entry.settledAt) > c.expireIn {
-		return "pumpkin"
+		c.Lock()
+		delete(c.data, key)
+		c.Unlock()
+		fmt.Println("Expired")
+		return nil
 	}
 	return entry.value
 }
 
 func main() {
 	someCache := NewInMemoryCache(1 * time.Second)
+	fmt.Println(someCache.Get("one"))
 	someCache.Set("one", 1)
 	someCache.Set("two", 2)
 	someCache.Set("three", 3)
