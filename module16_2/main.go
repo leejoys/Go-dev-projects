@@ -48,18 +48,17 @@ func (c InMemoryCache) Set(key string, value interface{}) {
 
 //Get ...
 func (c InMemoryCache) Get(key string) interface{} {
+	defer c.Unlock()
 	c.Lock()
 	entry, ok := c.data[key]
-	c.Unlock()
+
 	if !ok {
 		fmt.Println("There is no value")
 		return nil
 	}
 	expired := time.Now()
 	if expired.Sub(entry.settledAt) > c.expireIn {
-		c.Lock()
 		delete(c.data, key)
-		c.Unlock()
 		fmt.Println("Expired")
 		return nil
 	}
