@@ -26,7 +26,7 @@ type Cache interface {
 type InMemoryCache struct {
 	data     map[string]CacheEntry
 	expireIn time.Duration
-	m        *sync.RWMutex
+	*sync.RWMutex
 }
 
 //NewInMemoryCache ...
@@ -48,9 +48,10 @@ func (c InMemoryCache) Set(key string, value interface{}) {
 
 //Get ...
 func (c InMemoryCache) Get(key string) interface{} {
-	defer c.RUnlock()
+
 	c.RLock()
 	entry, ok := c.data[key]
+	c.RUnlock()
 
 	if !ok {
 		fmt.Println("There is no value")
