@@ -3,11 +3,10 @@ package main
 import (
 	"fmt"
 	"sync"
-	"sync/atomic"
 )
 
 // Шаг наращивания счётчика
-const step int64 = 100
+const step int64 = 1
 
 // Конечное значение счетчика
 const endCounterValue int64 = 1000
@@ -15,21 +14,28 @@ const endCounterValue int64 = 1000
 func main() {
 
 	var counter int64 = 0
-	var wg sync.WaitGroup
+	var c = sync.NewCond(&sync.RWMutex{})
 	increment := func() {
-		defer wg.Done()
-		atomic.AddInt64(&counter, step)
+		c.Lock()
+		counter += step
+		c.Unlock()
 	}
-	// Не всегда вычисление этой переменной будет приводить к верному
-	// результату в счётчике, но для правильных значений
-	// и для удобства - можно
+
 	var iterationCount int = int(endCounterValue / step)
 	for i := 1; i <= iterationCount; i++ {
-		wg.Add(1)
 		go increment()
 	}
+
+	go func(){
+		for{
+			if counter==endCounterValue{
+				c.Signal()
+			}
+		}
+	}
+
 	// Ожидаем поступления сигнала
-	wg.Wait()
+	c.Wait()
 	// Печатаем результат, надеясь, что будет 1000
 	fmt.Println(counter)
 }
