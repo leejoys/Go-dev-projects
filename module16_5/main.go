@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
+	"time"
 )
 
 // ErrNotEnough - error for withdrawal method
@@ -10,6 +12,10 @@ var ErrNotEnough = fmt.Errorf("Not enough money to withdraw")
 
 // ErrWrongCmd - error for wrong command check
 var ErrWrongCmd = fmt.Errorf("Unsupported command. You can use commands: balance, deposit, withdrawal, quit.")
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 // BankClient interface
 type BankClient interface {
@@ -31,12 +37,16 @@ func NewAccount() *Account {
 
 // Deposit deposits given amount to clients account
 func (a *Account) Deposit(amount int) {
+	a.Lock()
 	a.balance += amount
+	a.Unlock()
 }
 
 // Withdrawal withdraws given amount from clients account.
 // return error if clients balance less the withdrawal amount
 func (a *Account) Withdrawal(amount int) error {
+	defer a.Unlock()
+	a.Lock()
 	if a.balance < amount {
 		return ErrNotEnough
 	}
@@ -46,7 +56,10 @@ func (a *Account) Withdrawal(amount int) error {
 
 // Balance returns clients balance
 func (a *Account) Balance() int {
-	return a.balance
+	a.RLock()
+	b := a.balance
+	a.RUnlock()
+	return b
 }
 
 func scanCommand(a *Account, wg *sync.WaitGroup) {
@@ -59,7 +72,7 @@ func scanCommand(a *Account, wg *sync.WaitGroup) {
 
 		switch cmd {
 		case "balance":
-			fmt.Printf("Balance: %d", a.Balance())
+			fmt.Printf("Balance: %d\n", a.Balance())
 
 		case "deposit":
 			fmt.Println("Enter ammount:")
@@ -80,16 +93,24 @@ func scanCommand(a *Account, wg *sync.WaitGroup) {
 	}
 }
 
-//запускает 10 горутин, каждая из которых с промежутком
-//от 0.5 секунд до 1 секунды зачисляет на счёт клиента случайную сумму от 1 до 10.
-func debet() {
-
+//с промежутком от 0.5 секунд до 1 секунды зачисляет на счёт клиента случайную сумму от 1 до 10
+func credit(a *Account) {
+	for {
+		time.Sleep(time.Millisecond * time.Duration(rand.Intn(500)+500))
+		a.Deposit(rand.Intn(9) + 1)
+	}
 }
 
-//запускается 5 горутин, которые с промежутком 0.5 секунд до 1 секунды снимают с клиента случайную сумму от 1 до 5.
+//с промежутком 0.5 секунд до 1 секунды снимаeт с клиента случайную сумму от 1 до 5
 //Если снятие невозможно, в консоль выводится сообщение об ошибке, и приложение продолжает работу.
-func credit() {
-
+func debet(a *Account) {
+	for {
+		time.Sleep(time.Millisecond * time.Duration(rand.Intn(500)+500))
+		err := a.Withdrawal(rand.Intn(4) + 1)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
 }
 
 func main() {
@@ -97,9 +118,14 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	go scanCommand(a, wg)
-	go debet()
-	go credit()
+	go scanCommand(a, &wg)
+
+	for i := 0; i <= 10; i++ {
+		go credit(a)
+	}
+	for i := 0; i <= 5; i++ {
+		go debet(a)
+	}
 
 	wg.Wait()
 }
