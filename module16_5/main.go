@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+//interface implementation test
 var _ Account = BankClient{}
 
 // ErrNotEnough - error for withdrawal method
