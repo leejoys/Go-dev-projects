@@ -59,7 +59,9 @@ func (c InMemoryCache) Get(key string) interface{} {
 	}
 	expired := time.Now()
 	if expired.Sub(entry.settledAt) > c.expireIn {
+		c.Lock()
 		delete(c.data, key)
+		c.Unlock()
 		fmt.Println("Expired")
 		return nil
 	}
