@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var _ Account = BankClient{}
+
 // ErrNotEnough - error for withdrawal method
 var ErrNotEnough = fmt.Errorf("Not enough money to withdraw")
 
