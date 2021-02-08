@@ -16,9 +16,9 @@ func main() {
 	var counter int64 = 0
 	var c = sync.NewCond(&sync.RWMutex{})
 	increment := func() {
-		c.Lock()
+		c.L.Lock()
 		counter += step
-		c.Unlock()
+		c.L.Unlock()
 	}
 
 	var iterationCount int = int(endCounterValue / step)
@@ -26,16 +26,20 @@ func main() {
 		go increment()
 	}
 
-	go func(){
-		for{
-			if counter==endCounterValue{
+	go func() {
+		for {
+			c.L.Lock()
+			if counter >= endCounterValue {
 				c.Signal()
 			}
+			c.L.Unlock()
 		}
-	}
+	}()
 
 	// Ожидаем поступления сигнала
+	c.L.Lock()
 	c.Wait()
+	c.L.Unlock()
 	// Печатаем результат, надеясь, что будет 1000
 	fmt.Println(counter)
 }
