@@ -27,23 +27,23 @@ func main() {
 		close(oddChan)
 	}()
 
-	for {
+	//for {
 
-		select {
-		case _, notclosed := <-evenChan:
-			if !notclosed {
-				break
-			} else {
-				fmt.Println("Even!")
-			}
-		case _, notclosed := <-oddChan:
-			if !notclosed {
-				break
-			} else {
-				fmt.Println("Odd!")
-			}
-		case <-time.Tick(time.Second / 10):
-			fmt.Println(time.Now())
+	select {
+	case message, notclosed := <-evenChan:
+		if !notclosed {
+			break
+		} else {
+			fmt.Printf("%d %v is even!\n", message, notclosed)
 		}
+	case message, notclosed := <-oddChan:
+		if !notclosed {
+			break
+		} else {
+			fmt.Printf("%d %v is odd!\n", message, notclosed)
+		}
+	case <-time.Tick(time.Second / 10):
+		fmt.Println(time.Now().Format(time.StampMilli))
 	}
+	//}
 }
