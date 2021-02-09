@@ -6,8 +6,6 @@ import (
 	"os"
 )
 
-var i int = 1
-
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("Enter text: ")
