@@ -15,7 +15,7 @@ func main() {
 	evenChan, oddChan := make(chan int, 0), make(chan int, 0)
 
 	go func() {
-		for i := 1; i <= 100; i++ {
+		for i := 1; i <= 20; i++ {
 			time.Sleep(time.Second / 4)
 			if i%2 != 0 {
 				oddChan <- i
@@ -27,23 +27,23 @@ func main() {
 		close(oddChan)
 	}()
 
-	//for {
+	for {
 
-	select {
-	case message, notclosed := <-evenChan:
-		if !notclosed {
-			break
-		} else {
-			fmt.Printf("%d %v is even!\n", message, notclosed)
+		select {
+		case _, notclosed := <-evenChan:
+			if !notclosed {
+				return
+			}
+			fmt.Printf("Even!\n")
+
+		case _, notclosed := <-oddChan:
+			if !notclosed {
+				return
+			}
+			fmt.Printf("Odd!\n")
+
+		case <-time.Tick(time.Second / 10):
+			fmt.Println(time.Now().Format(time.StampMilli))
 		}
-	case message, notclosed := <-oddChan:
-		if !notclosed {
-			break
-		} else {
-			fmt.Printf("%d %v is odd!\n", message, notclosed)
-		}
-	case <-time.Tick(time.Second / 10):
-		fmt.Println(time.Now().Format(time.StampMilli))
 	}
-	//}
 }
