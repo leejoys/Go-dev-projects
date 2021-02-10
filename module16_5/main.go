@@ -8,7 +8,7 @@ import (
 )
 
 //interface implementation test
-var _ Account = BankClient{}
+var _ BankClient = Account{}
 
 // ErrNotEnough - error for withdrawal method
 var ErrNotEnough = fmt.Errorf("Not enough money to withdraw")
@@ -29,43 +29,44 @@ type BankClient interface {
 
 //Account struct
 type Account struct {
-	balance int
+	balance *int
 	*sync.RWMutex
 }
 
 //NewAccount create account
 func NewAccount() *Account {
-	return &Account{0, &sync.RWMutex{}}
+	b := 0
+	return &Account{&b, &sync.RWMutex{}}
 }
 
 // Deposit deposits given amount to clients account
-func (a *Account) Deposit(amount int) {
+func (a Account) Deposit(amount int) {
 	a.Lock()
-	a.balance += amount
+	*a.balance += amount
 	a.Unlock()
 }
 
 // Withdrawal withdraws given amount from clients account.
 // return error if clients balance less the withdrawal amount
-func (a *Account) Withdrawal(amount int) error {
+func (a Account) Withdrawal(amount int) error {
 	defer a.Unlock()
 	a.Lock()
-	if a.balance < amount {
+	if *a.balance < amount {
 		return ErrNotEnough
 	}
-	a.balance -= amount
+	*a.balance -= amount
 	return nil
 }
 
 // Balance returns clients balance
-func (a *Account) Balance() int {
+func (a Account) Balance() int {
 	a.RLock()
-	b := a.balance
+	b := *a.balance
 	a.RUnlock()
 	return b
 }
 
-func scanCommand(a *Account, wg *sync.WaitGroup) {
+func scanCommand(a BankClient, wg *sync.WaitGroup) { //передаю структуру через интерфейс
 
 	for {
 		var cmd string
@@ -85,7 +86,10 @@ func scanCommand(a *Account, wg *sync.WaitGroup) {
 		case "withdrawal":
 			fmt.Println("Enter ammount:")
 			fmt.Scanln(&ammount)
-			a.Withdrawal(ammount)
+			err := a.Withdrawal(ammount)
+			if err != nil { //Этого в задаче нет, но я добавил, потому что так должно быть
+				fmt.Println(err)
+			}
 
 		case "quit":
 			wg.Done()
@@ -97,7 +101,7 @@ func scanCommand(a *Account, wg *sync.WaitGroup) {
 }
 
 //с промежутком от 0.5 секунд до 1 секунды зачисляет на счёт клиента случайную сумму от 1 до 10
-func credit(a *Account) {
+func credit(a BankClient) { //передаю структуру через интерфейс
 	for {
 		time.Sleep(time.Millisecond * time.Duration(rand.Intn(500)+500))
 		a.Deposit(rand.Intn(9) + 1)
@@ -106,7 +110,7 @@ func credit(a *Account) {
 
 //с промежутком 0.5 секунд до 1 секунды снимаeт с клиента случайную сумму от 1 до 5
 //Если снятие невозможно, в консоль выводится сообщение об ошибке, и приложение продолжает работу.
-func debet(a *Account) {
+func debet(a BankClient) { //передаю структуру через интерфейс
 	for {
 		time.Sleep(time.Millisecond * time.Duration(rand.Intn(500)+500))
 		err := a.Withdrawal(rand.Intn(4) + 1)

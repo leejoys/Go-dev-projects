@@ -1,5 +1,9 @@
 package main
 
+//Напишите программу, которая будет каждую секунду увеличивать значение переменной на единицу и каждую ⅕ секунды
+//выводить в консоль значение этой переменной. Программа должна выполняться n секунд и после этого закрываться.
+//n вводит пользователь после запуска программы.
+
 import (
 	"fmt"
 	"sync"
@@ -8,7 +12,7 @@ import (
 
 func printValue(i *int, m *sync.Mutex) {
 	for {
-		time.Sleep(time.Second * 1 / 3)
+		time.Sleep(time.Second / 3)
 		m.Lock()
 		fmt.Printf("Value is %d \n", *i)
 		m.Unlock()
@@ -17,7 +21,6 @@ func printValue(i *int, m *sync.Mutex) {
 
 func addValue(i *int, m *sync.Mutex) {
 	for {
-
 		time.Sleep(time.Second * 1)
 		m.Lock()
 		*i++

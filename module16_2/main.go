@@ -58,7 +58,7 @@ func (c InMemoryCache) Get(key string) interface{} {
 	}
 	expired := time.Now()
 	if expired.Sub(entry.settledAt) > c.expireIn {
-		delete(c.data, key)
+		delete(c.data, key) // добавил удаление устаревшего значения, обычный лок позволяет
 		fmt.Println("Expired")
 		return nil
 	}
@@ -67,7 +67,7 @@ func (c InMemoryCache) Get(key string) interface{} {
 
 func main() {
 	someCache := NewInMemoryCache(1 * time.Second)
-	fmt.Println(someCache.Get("one"))
+	fmt.Println(someCache.Get("one")) //добавил проверку вывода ошибки несуществующего значения
 	someCache.Set("one", 1)
 	someCache.Set("two", 2)
 	someCache.Set("three", 3)
