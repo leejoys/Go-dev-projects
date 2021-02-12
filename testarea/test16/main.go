@@ -37,13 +37,21 @@ func (s *Semaphore) Release() error {
 	}
 }
 
-// NewSemaphore — функция создания семафора
+// NewSemaphore — функция создания семафора (двоичного)
 func NewSemaphore(timeout time.Duration) *Semaphore {
 	return &Semaphore{
 		sem:     make(chan int),
 		timeout: timeout,
 	}
 }
+
+//// NewSemaphore — функция создания семафора (подсчета)
+// func NewSemaphore(counter int, timeout time.Duration) *Semaphore {
+//     return &Semaphore{
+//         sem:     make(chan int, counter),
+//         timeout: timeout,
+//     }
+// }
 
 func main() {
 	s := NewSemaphore(3 * time.Second)
