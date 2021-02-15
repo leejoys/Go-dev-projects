@@ -15,8 +15,8 @@ func main() {
 	evenChan, oddChan := make(chan int, 0), make(chan int, 0)
 
 	go func() {
-		for i := 1; i <= 20; i++ {
-			time.Sleep(time.Second / 4)
+		for i := 1; i <= 10; i++ {
+			time.Sleep(time.Second / 2)
 			if i%2 != 0 {
 				oddChan <- i
 			} else {
