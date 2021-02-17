@@ -37,6 +37,7 @@ func (r *rBuf) Get() []int {
 			continue
 		}
 		resultArr = append(resultArr, r.dataRing.Value.(int))
+		r.dataRing.Value = nil
 		r.dataRing = r.dataRing.Next()
 
 	}
@@ -51,5 +52,6 @@ func main() {
 	// r.Pull(4)
 	// r.Pull(5)
 	// r.Pull(6)
+	fmt.Println(r.Get())
 	fmt.Println(r.Get())
 }
