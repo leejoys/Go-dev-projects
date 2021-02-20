@@ -41,10 +41,10 @@ func Positive(done <-chan int, cIn <-chan int) <-chan int {
 			select {
 			case <-done:
 				return
-			case el:=<-cIn: 
-			if el>= 0{
-				 cOut <- el
-			}
+			case el := <-cIn:
+				if el >= 0 {
+					cOut <- el
+				}
 			}
 		}
 	}()
@@ -61,10 +61,10 @@ func Trine(done <-chan int, cIn <-chan int) <-chan int {
 			select {
 			case <-done:
 				return
-			case el:=<-cIn: 
-			if el%3 == 0 && el != 0 {
-				cOut <- el
-			}
+			case el := <-cIn:
+				if el%3 == 0 && el != 0 {
+					cOut <- el
+				}
 			}
 		}
 	}()
@@ -85,19 +85,25 @@ var ringDelay int = 2
 var ringSize int = 5
 
 //RingBuf make newrBuf(ringSize), work and exit
-func RingBuf(cIn <-chan int) <-chan int {
+func RingBuf(done <-chan int, cIn <-chan int) <-chan int {
 	r := newrBuf(ringSize)
 	cOut := make(chan int)
 
 	go func() {
-	
-	for el := range cIn {
-			r.Pull(el)
 
-		<-time.After(time.Second * time.Duration(ringDelay))
+		for {
+			select {
+			case <-done:
+				return
 
-		for _, i := range r.Get() {
-			cOut <- i
+			case el := <-cIn:
+				r.Pull(el)
+
+			case <-time.After(time.Second * time.Duration(ringDelay)):
+				for _, i := range r.Get() {
+					cOut <- i
+				}
+			}
 		}
 	}()
 	return cOut
@@ -154,10 +160,7 @@ var ErrWrongCmd = fmt.Errorf("Unsupported command. You can use commands: input, 
 //DataSrc struct
 type DataSrc struct {
 	data *[]int
-	C1   chan int
-	C2   chan int
-	C3   chan int
-	C4   chan int
+	C    chan int
 	*sync.WaitGroup
 }
 
@@ -165,9 +168,6 @@ type DataSrc struct {
 func NewDataSrc() *DataSrc {
 	d := make([]int, 0)
 	return &DataSrc{&d,
-		make(chan int),
-		make(chan int),
-		make(chan int),
 		make(chan int),
 		&sync.WaitGroup{}}
 }
@@ -186,16 +186,15 @@ func (d DataSrc) Process() error {
 	}
 	fmt.Println("Processing...")
 	for _, i := range *d.data {
-		d.C1 <- i
+		d.C <- i
 	}
-	ringSize := len(*d.data)
-	go d.RingBuf(ringSize)
+
 	*d.data = make([]int, 0)
 	return nil
 }
 
 //ScanCmd scan cmd
-func (d DataSrc) ScanCmd() {
+func (d DataSrc) ScanCmd(done chan int) {
 
 	for {
 		var cmd string
@@ -209,7 +208,7 @@ func (d DataSrc) ScanCmd() {
 		//которые можно ввести через консоль. Как и где их фильтровать, решайте сами.
 		case "input":
 
-			fmt.Println("Enter numbers separated by whitespaces:")
+			fmt.Printf("Enter numbers separated by whitespaces:\n")
 			in := bufio.NewScanner(os.Stdin)
 			in.Scan()
 			anything := in.Text()
@@ -231,6 +230,7 @@ func (d DataSrc) ScanCmd() {
 			}
 
 		case "quit":
+			close(done)
 			d.Done()
 			return
 
@@ -252,10 +252,10 @@ func receiver(c <-chan int) {
 
 func main() {
 	d := NewDataSrc()
+	done := make(chan int)
+	pipeline := RingBuf(done, Trine(done, Positive(done, d.C)))
 	d.Add(1)
-	go d.ScanCmd()
-	go d.Positive()
-	go d.Trine()
-	go receiver(d.C4)
+	go d.ScanCmd(done)
+	go receiver(pipeline)
 	d.Wait()
 }
