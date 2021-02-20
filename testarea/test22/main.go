@@ -34,42 +34,23 @@ import (
 
 //Positive Стадия фильтрации отрицательных чисел (не пропускать отрицательные числа).
 //[+]
-func Positive(done <-chan int, cIn <-chan int) <-chan int {
-	cOut := make(chan int)
-	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			case el:=<-cIn: 
-			if el>= 0{
-				 cOut <- el
-			}
-			}
+func (d DataSrc) Positive() {
+	for {
+		el := <-d.C1
+		if el >= 0 {
+			d.C2 <- el
 		}
-	}()
-
-	return cOut
+	}
 }
 
 //Trine Стадия фильтрации чисел, не кратных 3 (не пропускать такие числа), исключая также и 0 [+].
 //[+]
-func Trine(done <-chan int, cIn <-chan int) <-chan int {
-	cOut := make(chan int)
-	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			case el:=<-cIn: 
-			if el%3 == 0 && el != 0 {
-				cOut <- el
-			}
-			}
+func (d DataSrc) Trine() {
+	for {
+		if el := <-d.C2; el%3 == 0 && el != 0 {
+			d.C3 <- el
 		}
-	}()
-
-	return cOut
+	}
 }
 
 //[+]
@@ -81,26 +62,23 @@ func Trine(done <-chan int, cIn <-chan int) <-chan int {
 //ring bufer delay
 var ringDelay int = 2
 
-//ring bufer size
-var ringSize int = 5
-
 //RingBuf make newrBuf(ringSize), work and exit
-func RingBuf(cIn <-chan int) <-chan int {
+func (d DataSrc) RingBuf(ringSize int) {
 	r := newrBuf(ringSize)
-	cOut := make(chan int)
-
-	go func() {
-	
-	for el := range cIn {
-			r.Pull(el)
-
-		<-time.After(time.Second * time.Duration(ringDelay))
-
+	defer func() {
 		for _, i := range r.Get() {
-			cOut <- i
+			d.C4 <- i
 		}
 	}()
-	return cOut
+	for {
+		select {
+		case el := <-d.C3:
+			r.Pull(el)
+
+		case <-time.After(time.Second * time.Duration(ringDelay)):
+			return
+		}
+	}
 }
 
 // rBuf data structure
