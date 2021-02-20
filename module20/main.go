@@ -34,13 +34,15 @@ import (
 
 //Positive Стадия фильтрации отрицательных чисел (не пропускать отрицательные числа).
 //[+]
-func Positive(done <-chan int, cIn <-chan int) <-chan int {
+func Positive(wg *sync.WaitGroup, done <-chan int, cIn <-chan int) <-chan int {
 	cOut := make(chan int)
 	go func() {
 		for {
 			select {
 			case <-done:
+				wg.Done()
 				return
+
 			case el := <-cIn:
 				if el >= 0 {
 					cOut <- el
@@ -54,13 +56,15 @@ func Positive(done <-chan int, cIn <-chan int) <-chan int {
 
 //Trine Стадия фильтрации чисел, не кратных 3 (не пропускать такие числа), исключая также и 0 [+].
 //[+]
-func Trine(done <-chan int, cIn <-chan int) <-chan int {
+func Trine(wg *sync.WaitGroup, done <-chan int, cIn <-chan int) <-chan int {
 	cOut := make(chan int)
 	go func() {
 		for {
 			select {
 			case <-done:
+				wg.Done()
 				return
+
 			case el := <-cIn:
 				if el%3 == 0 && el != 0 {
 					cOut <- el
@@ -85,7 +89,7 @@ var ringDelay int = 2
 var ringSize int = 5
 
 //RingBuf make newrBuf(ringSize), work and exit
-func RingBuf(done <-chan int, cIn <-chan int) <-chan int {
+func RingBuf(wg *sync.WaitGroup, done <-chan int, cIn <-chan int) <-chan int {
 	r := newrBuf(ringSize)
 	cOut := make(chan int)
 
@@ -94,6 +98,7 @@ func RingBuf(done <-chan int, cIn <-chan int) <-chan int {
 		for {
 			select {
 			case <-done:
+				wg.Done()
 				return
 
 			case el := <-cIn:
@@ -161,7 +166,6 @@ var ErrWrongCmd = fmt.Errorf("Unsupported command. You can use commands: input, 
 type DataSrc struct {
 	data *[]int
 	C    chan int
-	*sync.WaitGroup
 }
 
 //NewDataSrc create DataSrc
@@ -169,7 +173,7 @@ func NewDataSrc() *DataSrc {
 	d := make([]int, 0)
 	return &DataSrc{&d,
 		make(chan int),
-		&sync.WaitGroup{}}
+	}
 }
 
 // intInput input ints to DataSrc
@@ -228,10 +232,11 @@ func (d DataSrc) ScanCmd(done chan int) {
 				fmt.Println(err)
 				break
 			}
+			time.Sleep(time.Second * time.Duration(ringDelay+1))
 
 		case "quit":
 			close(done)
-			d.Done()
+
 			return
 
 		default:
@@ -244,18 +249,28 @@ func (d DataSrc) ScanCmd(done chan int) {
 //Также написать код потребителя данных конвейера. Данные от конвейера можно направить снова в консоль
 //построчно, сопроводив их каким-нибудь поясняющим текстом, например: «Получены данные …».
 
-func receiver(c <-chan int) {
+func receiver(wg *sync.WaitGroup, done chan int, c <-chan int) {
 	for {
-		fmt.Printf("Int received: %d\n", <-c)
+		select {
+		case <-done:
+			wg.Done()
+			return
+
+		case el := <-c:
+			fmt.Printf("Int received: %d\n", el)
+		}
+
 	}
 }
 
 func main() {
+	var wg sync.WaitGroup
+	wg.Add(4)
 	d := NewDataSrc()
 	done := make(chan int)
-	pipeline := RingBuf(done, Trine(done, Positive(done, d.C)))
-	d.Add(1)
+	pipeline := RingBuf(&wg, done, Trine(&wg, done, Positive(&wg, done, d.C)))
+
 	go d.ScanCmd(done)
-	go receiver(pipeline)
-	d.Wait()
+	go receiver(&wg, done, pipeline)
+	wg.Wait()
 }
