@@ -36,6 +36,7 @@ import (
 //[+]
 func Positive(wg *sync.WaitGroup, done <-chan int, cIn <-chan int) <-chan int {
 	cOut := make(chan int)
+	wg.Add(1)
 	go func() {
 		for {
 			select {
@@ -58,6 +59,7 @@ func Positive(wg *sync.WaitGroup, done <-chan int, cIn <-chan int) <-chan int {
 //[+]
 func Trine(wg *sync.WaitGroup, done <-chan int, cIn <-chan int) <-chan int {
 	cOut := make(chan int)
+	wg.Add(1)
 	go func() {
 		for {
 			select {
@@ -92,7 +94,7 @@ var ringSize int = 5
 func RingBuf(wg *sync.WaitGroup, done <-chan int, cIn <-chan int) <-chan int {
 	r := newrBuf(ringSize)
 	cOut := make(chan int)
-
+	wg.Add(1)
 	go func() {
 
 		for {
@@ -265,12 +267,13 @@ func receiver(wg *sync.WaitGroup, done chan int, c <-chan int) {
 
 func main() {
 	var wg sync.WaitGroup
-	wg.Add(4)
+
 	d := NewDataSrc()
 	done := make(chan int)
 	pipeline := RingBuf(&wg, done, Trine(&wg, done, Positive(&wg, done, d.C)))
 
 	go d.ScanCmd(done)
+	wg.Add(1)
 	go receiver(&wg, done, pipeline)
 	wg.Wait()
 }
