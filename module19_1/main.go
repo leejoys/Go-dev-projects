@@ -37,9 +37,8 @@ func demultiplexingFunc(dataSourceChan chan int, amount int) ([]chan int, <-chan
 		}()
 		wg.Wait()
 		// После завершения посылки сообщений в основной
-		// канал-источник
-		// данных
-		// закрываем все каналы-потребители
+		// канал-источник данных
+		// отправляем сигнал на закрытие всех горутин-потребителей
 		close(done)
 	}()
 	return output, done
@@ -53,7 +52,7 @@ func multiplexingFunc(done <-chan int, channels ...chan int) <-chan int {
 	// Именно его мы и вернем из этой функции для употребления
 	// внешним кодом
 	multiplexedChan := make(chan int)
-	multiplex := func(c chan int) {
+	multiplex := func(c chan int) { // передаем канал так, чтобы его можно было закрыть
 		defer wg.Done()
 		for {
 			select {
@@ -63,7 +62,7 @@ func multiplexingFunc(done <-chan int, channels ...chan int) <-chan int {
 			case i := <-c:
 				multiplexedChan <- i
 			case <-done:
-				close(c)
+				close(c) // закрываем канал перед выходом
 				return
 			}
 		}
